@@ -44,28 +44,34 @@ public final class MainActivity extends Activity {
         state=text(connectionText(),12,MUTED);state.setContentDescription(connectionText());root.addView(state);
         LinearLayout tabs=row();tabs.addView(button(history?"待取":"待取 ✓",v->{history=false;render();}),new LinearLayout.LayoutParams(0,-2,1));tabs.addView(button(history?"已取记录 ✓":"已取记录",v->{history=true;render();}),new LinearLayout.LayoutParams(0,-2,1));root.addView(tabs);
         List<PickupStore.Item> items=store.list(history);long places=items.stream().map(PickupStore.Item::station).distinct().count();
-        TextView count=text((history?"已取 ":"待取 ")+items.size()+" 件 · "+places+" 个地点",19,INK);bold(count);root.addView(count);gap(root,8);
+        TextView count=text((history?"已处理 ":"待取 ")+itemCounts(items)+" · "+places+" 个地点",19,INK);bold(count);root.addView(count);gap(root,8);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);content=column();scroll.addView(content);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         if(items.isEmpty()){
             gap(content,40);TextView empty=text(history?"还没有已取记录":"出门取件，一眼看全",25,INK);bold(empty);content.addView(empty);
             content.addView(text(history?"取到包裹后，点「已取」就会留在这里。":"粘贴取件通知，或手动添加。\n开启通知使用权后，新取件信息会自动收集。",16,MUTED));gap(content,16);
             if(!history)content.addView(button("开启通知自动收集",v->permission()));
         }
-        String last="";for(PickupStore.Item item:items){if(!last.equals(item.station())){gap(content,16);long n=items.stream().filter(x->x.station().equals(item.station())).count();TextView station=text(item.station()+"  ·  "+n+" 件",18,INK);bold(station);content.addView(station);last=item.station();}card(item);}
+        String last="";for(PickupStore.Item item:items){if(!last.equals(item.station())){gap(content,16);List<PickupStore.Item> atPlace=new ArrayList<>();for(PickupStore.Item x:items)if(x.station().equals(item.station()))atPlace.add(x);TextView station=text(item.station()+"  ·  "+itemCounts(atPlace),18,INK);bold(station);content.addView(station);last=item.station();}card(item);}
         gap(root,8);LinearLayout actions=row();actions.addView(button("粘贴取件信息",v->importText()),new LinearLayout.LayoutParams(0,-2,1));Button add=button("＋ 手动添加",v->edit(null));add.setTextColor(Color.WHITE);add.setBackground(shape(GREEN,12));actions.addView(add,new LinearLayout.LayoutParams(0,-2,1));root.addView(actions);
     }
+    private String itemCounts(List<PickupStore.Item> items){long reminders=items.stream().filter(x->x.code().trim().isEmpty()).count();return (items.size()-reminders)+" 件"+(reminders>0?" + "+reminders+" 条提醒":"");}
+    private String reminderTitle(PickupStore.Item item){String label=sourceLabel(item.source());String name=item.source().startsWith("通知 · ")?label.replaceFirst("^通知 · ",""):"";return name+(item.picked()?"取件提醒已处理":"有快递待取");}
     private String sourceLabel(String source){
         if(!source.startsWith("通知 · "))return source;
         String pkg=source.substring("通知 · ".length());
         if(pkg.equals("com.android.shell"))return "合成测试通知";
-        try{return "通知 · "+getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg,0));}catch(android.content.pm.PackageManager.NameNotFoundException e){return "来自通知";}
+        try{return "通知 · "+getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg,0));}catch(android.content.pm.PackageManager.NameNotFoundException e){
+            switch(pkg){case "com.jingdong.app.mall":return "通知 · 京东";case "com.taobao.taobao":return "通知 · 淘宝";case "com.xunmeng.pinduoduo":return "通知 · 拼多多";case "com.cainiao.wireless":return "通知 · 菜鸟";default:return "通知 · 来源 App";}
+        }
     }
     private void card(PickupStore.Item item){
         LinearLayout c=column();c.setPadding(dp(16),dp(10),dp(16),dp(10));c.setBackground(shape(Color.WHITE,16));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.topMargin=dp(8);content.addView(c,cp);
-        TextView code=text(item.code().trim().isEmpty()?"取件码待补充":item.code(),item.code().trim().isEmpty()?22:34,INK);bold(code);code.setTextIsSelectable(true);c.addView(code);
-        if(item.review())c.addView(text("请核对并补全取件信息",13,Color.rgb(139,87,17)));
+        boolean reminder=item.code().trim().isEmpty();
+        TextView code=text(reminder?reminderTitle(item):item.code(),reminder?22:34,INK);bold(code);code.setTextIsSelectable(true);c.addView(code);
+        if(reminder)c.addView(text("通知未提供取件码，请打开来源应用核对。\n这是一条提醒，不代表包裹件数；可编辑补充取件码。",13,MUTED));
+        else if(item.review())c.addView(text("请核对并补全取件信息",13,Color.rgb(139,87,17)));
         c.addView(text(sourceLabel(item.source())+" · "+new SimpleDateFormat("MM-dd HH:mm",Locale.CHINA).format(new Date(item.received())),12,MUTED));
-        LinearLayout buttons=row();buttons.addView(button(item.picked()?"恢复待取":"✓ 已取",v->{store.picked(item.id(),!item.picked());boolean finished=!item.picked()&&store.list(false).isEmpty();render();toast(item.picked()?"已恢复到待取":"已标记已取，可在已取记录恢复");if(finished)SupportPrompt.showOnce(this);}),new LinearLayout.LayoutParams(0,-2,1));buttons.addView(button("编辑",v->edit(item)),new LinearLayout.LayoutParams(0,-2,1));buttons.addView(button("详情",v->detail(item)),new LinearLayout.LayoutParams(0,-2,1));c.addView(buttons);
+        LinearLayout buttons=row();buttons.addView(button(item.picked()?"恢复待取":reminder?"✓ 已处理":"✓ 已取",v->{store.picked(item.id(),!item.picked());boolean finished=!item.picked()&&store.list(false).isEmpty();render();toast(item.picked()?"已恢复到待取":"已移入已取记录，可随时恢复");if(finished)SupportPrompt.showOnce(this);}),new LinearLayout.LayoutParams(0,-2,1));buttons.addView(button("编辑",v->edit(item)),new LinearLayout.LayoutParams(0,-2,1));buttons.addView(button("详情",v->detail(item)),new LinearLayout.LayoutParams(0,-2,1));c.addView(buttons);
     }
     private LinearLayout form(){LinearLayout l=column();l.setPadding(dp(20),dp(8),dp(20),dp(8));return l;}
     private EditText input(LinearLayout l,String label,String value,boolean multiline){l.addView(text(label,14,MUTED));EditText e=new EditText(this);e.setText(value);e.setTextSize(17);e.setSingleLine(!multiline);e.setInputType(android.text.InputType.TYPE_CLASS_TEXT|(multiline?android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE:0)|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);e.setMinHeight(dp(48));l.addView(e,new LinearLayout.LayoutParams(-1,-2));return e;}

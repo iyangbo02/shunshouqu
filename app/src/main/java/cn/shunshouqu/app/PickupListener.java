@@ -22,8 +22,9 @@ public final class PickupListener extends NotificationListenerService {
         long received=n.when>0 && n.when<=System.currentTimeMillis()+60000?n.when:sbn.getPostTime();
         if(received<=getSharedPreferences("settings",0).getLong("ignoreBefore",0))return;
         String content=extract(n);String source="通知 · "+sbn.getPackageName();
+        String identity=UUID.nameUUIDFromBytes((sbn.getKey()+"|"+received).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
         if(worker.isShutdown())return;
-        worker.execute(()-> {try(PickupStore store=new PickupStore(this)){boolean inserted=false;for(PickupParser.Candidate c:PickupParser.parse(content))if(store.add(c,source,received,true)>0)inserted=true;if(inserted)changed();}catch(RuntimeException ignored){getSharedPreferences("settings",0).edit().putBoolean("receiveError",true).apply();changed();}});
+        worker.execute(()-> {try(PickupStore store=new PickupStore(this)){boolean inserted=false;List<PickupParser.Candidate> candidates=PickupParser.parse(content);for(PickupParser.Candidate c:candidates)if(store.add(c,source,received,true,candidates.size()==1?identity:"")>0)inserted=true;if(inserted)changed();}catch(RuntimeException ignored){getSharedPreferences("settings",0).edit().putBoolean("receiveError",true).apply();changed();}});
     }
     static String extract(Notification n) {
         Bundle e=n.extras; if(e==null)return "";

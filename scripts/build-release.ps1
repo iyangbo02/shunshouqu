@@ -28,7 +28,10 @@ try {
         if ($LASTEXITCODE) { throw 'Release build failed' }
         & "$env:JAVA_HOME/bin/java.exe" -jar "$env:ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" verify --print-certs app/build/outputs/apk/release/app-release.apk
         if ($LASTEXITCODE) { throw 'Release signature verification failed' }
-        Copy-Item app/build/outputs/apk/release/app-release.apk delivery/顺手取-0.2.0-release.apk -Force
+        $apkMetadata=Get-Content app/build/outputs/apk/release/output-metadata.json -Raw | ConvertFrom-Json
+        $appVersion=$apkMetadata.elements[0].versionName
+        New-Item -ItemType Directory -Force delivery | Out-Null
+        Copy-Item app/build/outputs/apk/release/app-release.apk "delivery/顺手取-$appVersion-release.apk" -Force
     } finally { Pop-Location }
 } finally {
     Remove-Item Env:SSQ_RELEASE_PASSWORD,Env:SSQ_RELEASE_STORE -ErrorAction SilentlyContinue
