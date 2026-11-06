@@ -1,0 +1,27 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'cn.shunshouqu.app'
+    compileSdk 36
+    useLibrary 'android.test.runner'
+    useLibrary 'android.test.base'
+    useLibrary 'android.test.mock'
+    defaultConfig { applicationId 'cn.shunshouqu.app'; minSdk 26; targetSdk 35; versionCode 2; versionName '0.2.0'; testInstrumentationRunner 'android.test.InstrumentationTestRunner' }
+    signingConfigs {
+        if (System.getenv('SSQ_RELEASE_STORE')) {
+            release {
+                storeFile file(System.getenv('SSQ_RELEASE_STORE'))
+                storePassword System.getenv('SSQ_RELEASE_PASSWORD')
+                keyAlias 'shunshouqu-release'
+                keyPassword System.getenv('SSQ_RELEASE_PASSWORD')
+                storeType 'PKCS12'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            debuggable false
+            if (System.getenv('SSQ_RELEASE_STORE')) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

@@ -1,0 +1,1 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="顺手取验证工具" android:testOnly="false"><uses-library android:name="android.test.runner"/><uses-library android:name="android.test.base"/><uses-library android:name="android.test.mock"/></application></manifest>
