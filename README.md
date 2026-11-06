@@ -4,7 +4,7 @@
 
 在本机整理取件信息，出门取件一眼看全。
 
-**[下载最新版安装包](https://github.com/iyangbo02/shunshouqu/releases/latest)** · [隐私说明](PRIVACY.md) · [实际测试记录](TEST_REPORT.md)
+**[下载最新版安装包](https://github.com/iyangbo02/shunshouqu/releases/tag/v0.2.0)** · [隐私说明](PRIVACY.md) · [实际测试记录](TEST_REPORT.md)
 
 ## 可以做什么
 
